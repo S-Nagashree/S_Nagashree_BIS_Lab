@@ -1,0 +1,128 @@
+----------------------------------CODE---------------------------------------------
+import random
+import numpy as np
+
+# -------------------------------
+# Gene Expression Algorithm for Financial Forecasting
+# -------------------------------
+
+class Chromosome:
+    def __init__(self, genes):
+        self.genes = genes  # list of values (integers/operations)
+        self.fitness = None
+
+# Generate random population
+def GenerateRandomPopulation(n, g):
+    P = []
+    for _ in range(n):
+        chromosome = Chromosome([random.uniform(-1, 1) for _ in range(g)])
+        P.append(chromosome)
+    return P
+
+# Express genotype to phenotype (linear regression-like model)
+def Express(chromosome):
+    return np.array(chromosome.genes)
+
+# Fitness function (forecasting accuracy using MSE)
+def FitnessFunction(phenotype, X, y):
+    # Predicted values using linear combination
+    y_pred = X.dot(phenotype[:X.shape[1]])
+    mse = np.mean((y - y_pred) ** 2)
+    return -mse  # higher fitness = lower error
+
+# Selection: Tournament
+def Select(P):
+    tournament = random.sample(P, 3)
+    return max(tournament, key=lambda c: c.fitness)
+
+# Crossover: one-point
+def Crossover(p1, p2):
+    point = random.randint(1, len(p1.genes) - 1)
+    child1_genes = p1.genes[:point] + p2.genes[point:]
+    child2_genes = p2.genes[:point] + p1.genes[point:]
+    return Chromosome(child1_genes), Chromosome(child2_genes)
+
+# Mutation
+def Mutate(chromosome):
+    pos = random.randint(0, len(chromosome.genes) - 1)
+    chromosome.genes[pos] = random.uniform(-1, 1)
+    return chromosome
+
+# Find best chromosome
+def BestChromosome(P):
+    return max(P, key=lambda c: c.fitness)
+
+# Main Gene Expression Algorithm
+def GeneExpressionAlgorithm(n, G, g, Pc, Pm, X, y):
+    # Step 1: Initialize population
+    Population = GenerateRandomPopulation(n, g)
+
+    # Step 2: Evaluate initial population
+    for c in Population:
+        phenotype = Express(c)
+        c.fitness = FitnessFunction(phenotype, X, y)
+
+    # Step 3: Evolution loop
+    for _ in range(G):
+        NewPopulation = []
+
+        while len(NewPopulation) < n:
+            # Selection
+            Parent1 = Select(Population)
+            Parent2 = Select(Population)
+
+            # Crossover
+            if random.random() < Pc:
+                Child1, Child2 = Crossover(Parent1, Parent2)
+            else:
+                Child1, Child2 = Chromosome(Parent1.genes[:]), Chromosome(Parent2.genes[:])
+
+            # Mutation
+            if random.random() < Pm:
+                Child1 = Mutate(Child1)
+            if random.random() < Pm:
+                Child2 = Mutate(Child2)
+
+            # Gene Expression + Fitness Evaluation
+            phenotype1 = Express(Child1)
+            phenotype2 = Express(Child2)
+            Child1.fitness = FitnessFunction(phenotype1, X, y)
+            Child2.fitness = FitnessFunction(phenotype2, X, y)
+
+            # Add to new population
+            NewPopulation.extend([Child1, Child2])
+
+        Population = NewPopulation
+
+    # Return best solution
+    return BestChromosome(Population)
+
+
+# -------------------------------
+# Example: Financial Forecasting (Synthetic Data)
+# -------------------------------
+if __name__ == "__main__":
+    # Synthetic financial data: X = features (lagged returns), y = next-day return
+    np.random.seed(42)
+    X = np.random.randn(100, 5)   # 100 days, 5 lagged features
+    true_weights = np.array([0.4, -0.2, 0.1, 0.05, 0.3])
+    y = X.dot(true_weights) + np.random.normal(0, 0.05, 100)
+
+    # Run Gene Expression Algorithm
+    best = GeneExpressionAlgorithm(
+        n=30,    # population size
+        G=50,    # generations
+        g=5,     # chromosome length = features
+        Pc=0.7,  # crossover probability
+        Pm=0.1,  # mutation probability
+        X=X,
+        y=y
+    )
+
+    print("Best fitness:", best.fitness)
+    print("Best genes (weights):", best.genes)
+
+
+---------------------------------------OUTPUT-----------------------------------------------
+Best fitness: -0.013530633516614305
+Best genes (weights): [0.41856895228372704, -0.11434094966585207, 0.05820723895231472, 0.061662475498833746, 0.2355336969802102]
