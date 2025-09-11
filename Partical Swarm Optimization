@@ -1,0 +1,90 @@
+import numpy as np
+
+# ---------------- Neural Network ----------------
+class SimpleNN:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        
+        # total weights = input->hidden + hidden->output
+        self.num_weights = (input_size * hidden_size) + (hidden_size * output_size)
+
+    def forward(self, X, weights):
+        # Unpack weights
+        ih_size = self.input_size * self.hidden_size
+        w_ih = weights[:ih_size].reshape(self.input_size, self.hidden_size)
+        w_ho = weights[ih_size:].reshape(self.hidden_size, self.output_size)
+        
+        hidden = np.tanh(np.dot(X, w_ih))
+        output = self.sigmoid(np.dot(hidden, w_ho))
+        return output
+
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def loss(self, X, y, weights):
+        y_pred = self.forward(X, weights)
+        return np.mean((y - y_pred) ** 2)
+
+# ---------------- PSO Algorithm ----------------
+def PSO_train(nn, X, y, N=30, max_iter=100, w=0.7, c1=1.5, c2=1.5, minx=-1, maxx=1):
+    d = nn.num_weights
+
+    # Initialize swarm
+    swarm_pos = [np.random.uniform(minx, maxx, d) for _ in range(N)]
+    swarm_vel = [np.random.uniform(-(maxx - minx), maxx - minx, d) for _ in range(N)]
+    pbest_pos = swarm_pos.copy()
+    pbest_val = [nn.loss(X, y, pos) for pos in swarm_pos]
+
+    gbest_pos = pbest_pos[np.argmin(pbest_val)]
+    gbest_val = min(pbest_val)
+
+    # Iteration loop
+    for _ in range(max_iter):
+        for i in range(N):
+            r1, r2 = np.random.rand(d), np.random.rand(d)
+
+            # Update velocity and position
+            swarm_vel[i] = (w * swarm_vel[i] +
+                             c1 * r1 * (pbest_pos[i] - swarm_pos[i]) +
+                             c2 * r2 * (gbest_pos - swarm_pos[i]))
+            swarm_pos[i] = swarm_pos[i] + swarm_vel[i]
+
+            # Keep within bounds
+            swarm_pos[i] = np.clip(swarm_pos[i], minx, maxx)
+
+            # Evaluate
+            fitness = nn.loss(X, y, swarm_pos[i])
+
+            # Update personal best
+            if fitness < pbest_val[i]:
+                pbest_pos[i] = swarm_pos[i].copy()
+                pbest_val[i] = fitness
+
+            # Update global best
+            if fitness < gbest_val:
+                gbest_pos = swarm_pos[i].copy()
+                gbest_val = fitness
+
+    return gbest_pos, gbest_val
+
+# ---------------- Example: XOR ----------------
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([[0],[1],[1],[0]])
+
+nn = SimpleNN(input_size=2, hidden_size=4, output_size=1)
+best_weights, best_loss = PSO_train(nn, X, y, max_iter=200)
+
+print("Best Loss:", best_loss)
+print("Predictions:")
+print(nn.forward(X, best_weights).round(3))
+
+
+----------------------------Output------------------------------
+Best Loss: 0.19754645389818654
+Predictions:
+[[0.5  ]
+ [0.634]
+ [0.531]
+ [0.431]]
