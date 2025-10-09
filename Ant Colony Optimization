@@ -1,0 +1,163 @@
+------------------------------------------------CODE----------------------------------------------------------
+import numpy as np
+import random
+
+# ---------------------------
+# PARAMETERS
+# ---------------------------
+NUM_ROBOTS = 4
+NUM_TASKS = 6
+NUM_ANTS = 10
+ITERATIONS = 50
+ALPHA = 1      # Pheromone importance
+BETA = 2       # Heuristic importance
+RHO = 0.5      # Evaporation rate
+TAU0 = 1.0     # Initial pheromone
+
+# ---------------------------
+# GENERATE RANDOM COST MATRIX
+# cost[i][j] = cost for robot i to do task j
+# ---------------------------
+np.random.seed(42)
+cost = np.random.randint(5, 20, size=(NUM_ROBOTS, NUM_TASKS))
+print("Cost Matrix (Robots x Tasks):\n", cost)
+
+# ---------------------------
+# Initialize pheromone and heuristic matrices
+# ---------------------------
+tau = np.ones((NUM_ROBOTS, NUM_TASKS)) * TAU0
+eta = 1 / (cost + 1e-9)  # heuristic = inverse of cost
+
+# ---------------------------
+# Function to construct a solution (task allocation)
+# ---------------------------
+def construct_solution(tau, eta, alpha, beta):
+    allocation = [-1] * NUM_TASKS  # which robot is assigned to each task
+    tasks = list(range(NUM_TASKS))
+
+    for task in tasks:
+        probabilities = []
+        for robot in range(NUM_ROBOTS):
+            p = (tau[robot][task] ** alpha) * (eta[robot][task] ** beta)
+            probabilities.append(p)
+        probabilities = np.array(probabilities)
+        probabilities = probabilities / probabilities.sum()
+
+        chosen_robot = np.random.choice(range(NUM_ROBOTS), p=probabilities)
+        allocation[task] = chosen_robot
+
+    return allocation
+
+# ---------------------------
+# Compute total cost of an allocation
+# ---------------------------
+def total_cost(allocation):
+    total = 0
+    for task, robot in enumerate(allocation):
+        total += cost[robot][task]
+    return total
+
+# ---------------------------
+# Main ACO Loop
+# ---------------------------
+best_allocation = None
+best_cost = np.inf
+
+for iteration in range(ITERATIONS):
+    all_solutions = []
+    all_costs = []
+
+    # Each ant constructs an allocation
+    for ant in range(NUM_ANTS):
+        solution = construct_solution(tau, eta, ALPHA, BETA)
+        c = total_cost(solution)
+        all_solutions.append(solution)
+        all_costs.append(c)
+
+        if c < best_cost:
+            best_cost = c
+            best_allocation = solution
+
+    # Evaporation
+    tau = (1 - RHO) * tau
+
+    # Update pheromones
+    for k, sol in enumerate(all_solutions):
+        for task, robot in enumerate(sol):
+            tau[robot][task] += 1.0 / all_costs[k]
+
+    print(f"Iteration {iteration+1}: Best Cost = {best_cost:.2f}")
+
+# ---------------------------
+# Display final result
+# ---------------------------
+print("\nFinal Best Allocation (task:robot):")
+for t, r in enumerate(best_allocation):
+    print(f"  Task {t+1} → Robot {r+1}")
+print("Total Cost:", best_cost)
+
+----------------------------------------OUTPUT------------------------------------------------
+Cost Matrix (Robots x Tasks):
+ [[11  8 17 19 15 12]
+ [17  9 11 14  7 11]
+ [15 15 12  9  8 12]
+ [12  7 10  9  6 12]]
+Iteration 1: Best Cost = 56.00
+Iteration 2: Best Cost = 54.00
+Iteration 3: Best Cost = 54.00
+Iteration 4: Best Cost = 54.00
+Iteration 5: Best Cost = 54.00
+Iteration 6: Best Cost = 54.00
+Iteration 7: Best Cost = 54.00
+Iteration 8: Best Cost = 54.00
+Iteration 9: Best Cost = 54.00
+Iteration 10: Best Cost = 54.00
+Iteration 11: Best Cost = 54.00
+Iteration 12: Best Cost = 54.00
+Iteration 13: Best Cost = 54.00
+Iteration 14: Best Cost = 54.00
+Iteration 15: Best Cost = 54.00
+Iteration 16: Best Cost = 54.00
+Iteration 17: Best Cost = 54.00
+Iteration 18: Best Cost = 54.00
+Iteration 19: Best Cost = 54.00
+Iteration 20: Best Cost = 54.00
+Iteration 21: Best Cost = 54.00
+Iteration 22: Best Cost = 54.00
+Iteration 23: Best Cost = 54.00
+Iteration 24: Best Cost = 54.00
+Iteration 25: Best Cost = 54.00
+Iteration 26: Best Cost = 54.00
+Iteration 27: Best Cost = 54.00
+Iteration 28: Best Cost = 54.00
+Iteration 29: Best Cost = 54.00
+Iteration 30: Best Cost = 54.00
+Iteration 31: Best Cost = 54.00
+Iteration 32: Best Cost = 54.00
+Iteration 33: Best Cost = 54.00
+Iteration 34: Best Cost = 54.00
+Iteration 35: Best Cost = 54.00
+Iteration 36: Best Cost = 54.00
+Iteration 37: Best Cost = 54.00
+Iteration 38: Best Cost = 54.00
+Iteration 39: Best Cost = 54.00
+Iteration 40: Best Cost = 54.00
+Iteration 41: Best Cost = 54.00
+Iteration 42: Best Cost = 54.00
+Iteration 43: Best Cost = 54.00
+Iteration 44: Best Cost = 54.00
+Iteration 45: Best Cost = 54.00
+Iteration 46: Best Cost = 54.00
+Iteration 47: Best Cost = 54.00
+Iteration 48: Best Cost = 54.00
+Iteration 49: Best Cost = 54.00
+Iteration 50: Best Cost = 54.00
+
+Final Best Allocation (task:robot):
+  Task 1 → Robot 1
+  Task 2 → Robot 4
+  Task 3 → Robot 4
+  Task 4 → Robot 3
+  Task 5 → Robot 4
+  Task 6 → Robot 2
+Total Cost: 54
