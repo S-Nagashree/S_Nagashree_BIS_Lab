@@ -1,0 +1,129 @@
+---------------------------------------CODE------------------------------------------------
+import numpy as np
+import math
+import random
+
+# ----------------------------
+# Spring Design Objective Function
+# ----------------------------
+def spring_design(x):
+    x1, x2, x3 = x
+    f = (x3 + 2) * x2 * x1**2
+
+    # Constraints
+    g1 = 1 - (x2**3 * x3) / (71785 * x1**4)
+    g2 = (4 * x2**2 - x1 * x2) / (12566 * (x2 * x1**3 - x1**4)) + (1 / (5108 * x1**2)) - 1
+    g3 = 1 - (140.45 * x1) / (x2**2 * x3)
+    g4 = (x1 + x2) / 1.5 - 1
+
+    # Penalize violations
+    penalty = 0
+    for g in [g1, g2, g3, g4]:
+        if g > 0:
+            penalty += 1000 * g**2
+
+    return f + penalty  # Minimize f subject to constraints
+
+
+# ----------------------------
+# Lévy Flight Function
+# ----------------------------
+def levy_flight(beta=1.5):
+    sigma = (math.gamma(1 + beta) * math.sin(math.pi * beta / 2) /
+             (math.gamma((1 + beta) / 2) * beta * 2 ** ((beta - 1) / 2))) ** (1 / beta)
+    u = np.random.normal(0, sigma)
+    v = np.random.normal(0, 1)
+    step = u / abs(v) ** (1 / beta)
+    return step
+
+
+# ----------------------------
+# Generate Random Solution
+# ----------------------------
+def random_solution(bounds):
+    return np.array([random.uniform(b[0], b[1]) for b in bounds])
+
+
+# ----------------------------
+# Apply Bounds
+# ----------------------------
+def apply_bounds(x, bounds):
+    return np.array([min(max(x[i], bounds[i][0]), bounds[i][1]) for i in range(len(bounds))])
+
+
+# ----------------------------
+# Cuckoo Search Algorithm
+# ----------------------------
+def cuckoo_search(fobj, bounds, n=20, pa=0.25, alpha=0.01, T_max=100):
+    # Initialize nests
+    nests = np.array([random_solution(bounds) for _ in range(n)])
+    fitness = np.array([fobj(x) for x in nests])
+    best_idx = np.argmin(fitness)
+    best = nests[best_idx].copy()
+    f_best = fitness[best_idx]
+
+    for t in range(T_max):
+        for i in range(n):
+            step = levy_flight()
+            x_new = nests[i] + alpha * step * (nests[i] - best)
+            x_new = apply_bounds(x_new, bounds)
+            f_new = fobj(x_new)
+
+            # Replace a random nest if better
+            j = random.randint(0, n - 1)
+            if f_new < fitness[j]:
+                nests[j] = x_new
+                fitness[j] = f_new
+
+        # Abandon worst nests
+        num_abandon = int(pa * n)
+        worst_idx = np.argsort(fitness)[-num_abandon:]
+        for k in worst_idx:
+            nests[k] = random_solution(bounds)
+            fitness[k] = fobj(nests[k])
+
+        # Update best solution
+        best_idx = np.argmin(fitness)
+        if fitness[best_idx] < f_best:
+            best = nests[best_idx].copy()
+            f_best = fitness[best_idx]
+
+        if t % 10 == 0:
+            print(f"Iteration {t}: Best Fitness = {f_best:.6f}")
+
+    return best, f_best
+
+
+# ----------------------------
+# MAIN
+# ----------------------------
+if __name__ == "__main__":
+    bounds = [(0.05, 2.0), (0.25, 1.3), (2.0, 15.0)]
+    best_sol, best_val = cuckoo_search(spring_design, bounds, n=25, pa=0.25, alpha=0.01, T_max=200)
+    print("\n✅ Best solution found:", best_sol)
+    print("✅ Best fitness value:", best_val)
+
+-----------------------------------------RESULT----------------------------------------------------------
+Iteration 0: Best Fitness = 712.939556
+Iteration 10: Best Fitness = 0.048911
+Iteration 20: Best Fitness = 0.048911
+Iteration 30: Best Fitness = 0.048911
+Iteration 40: Best Fitness = 0.048911
+Iteration 50: Best Fitness = 0.048911
+Iteration 60: Best Fitness = 0.048911
+Iteration 70: Best Fitness = 0.048911
+Iteration 80: Best Fitness = 0.048911
+Iteration 90: Best Fitness = 0.048911
+Iteration 100: Best Fitness = 0.040814
+Iteration 110: Best Fitness = 0.040814
+Iteration 120: Best Fitness = 0.040814
+Iteration 130: Best Fitness = 0.040814
+Iteration 140: Best Fitness = 0.040814
+Iteration 150: Best Fitness = 0.040814
+Iteration 160: Best Fitness = 0.040814
+Iteration 170: Best Fitness = 0.040814
+Iteration 180: Best Fitness = 0.040814
+Iteration 190: Best Fitness = 0.040814
+
+✅ Best solution found: [0.07538991 0.73617094 7.75450436]
+✅ Best fitness value: 0.04081410890048092
