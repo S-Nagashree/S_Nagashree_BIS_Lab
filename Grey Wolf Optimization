@@ -1,0 +1,217 @@
+------------------------------------CODE-----------------------------------------
+import numpy as np
+
+# --- Objective Function (Example: minimize total cost) ---
+def renewable_energy_cost(x):
+    # x[0] = solar panels, x[1] = wind turbines
+    solar_panels = x[0]
+    wind_turbines = x[1]
+
+    # --- Parameters ---
+    target_power = 500  # kW target demand
+    solar_power_per_panel = 1.5  # kW per panel
+    wind_power_per_turbine = 30  # kW per turbine
+
+    cost_solar = 200 * solar_panels     # installation + maintenance cost
+    cost_wind = 1000 * wind_turbines    # installation + maintenance cost
+    generated_power = solar_panels * solar_power_per_panel + wind_turbines * wind_power_per_turbine
+
+    # Power deficit penalty (if generation < target)
+    penalty = 0
+    if generated_power < target_power:
+        penalty = (target_power - generated_power) * 100  # penalty per kW shortage
+
+    total_cost = cost_solar + cost_wind + penalty
+    return total_cost  # minimize this
+
+
+# --- Grey Wolf Optimizer (GWO) Implementation ---
+def grey_wolf_optimizer(obj_func, bounds, N=20, T_max=50):
+    dim = len(bounds)
+    lower_bounds = np.array([b[0] for b in bounds])
+    upper_bounds = np.array([b[1] for b in bounds])
+
+    # Initialize wolf positions
+    X = np.random.uniform(low=lower_bounds, high=upper_bounds, size=(N, dim))
+    fitness = np.array([obj_func(x) for x in X])
+
+    # Initialize alpha, beta, delta
+    alpha, beta, delta = np.copy(X[0]), np.copy(X[1]), np.copy(X[2])
+    f_alpha, f_beta, f_delta = float('inf'), float('inf'), float('inf')
+
+    for i in range(N):
+        if fitness[i] < f_alpha:
+            delta, f_delta = np.copy(beta), f_beta
+            beta, f_beta = np.copy(alpha), f_alpha
+            alpha, f_alpha = np.copy(X[i]), fitness[i]
+        elif fitness[i] < f_beta:
+            delta, f_delta = np.copy(beta), f_beta
+            beta, f_beta = np.copy(X[i]), fitness[i]
+        elif fitness[i] < f_delta:
+            delta, f_delta = np.copy(X[i]), fitness[i]
+
+    # --- Main loop ---
+    for t in range(T_max):
+        a = 2 - 2 * t / T_max  # linearly decreases from 2 to 0
+
+        for i in range(N):
+            for d in range(dim):
+                r1, r2 = np.random.rand(), np.random.rand()
+                A1, C1 = 2 * a * r1 - a, 2 * r2
+                D_alpha = abs(C1 * alpha[d] - X[i, d])
+                X1 = alpha[d] - A1 * D_alpha
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A2, C2 = 2 * a * r1 - a, 2 * r2
+                D_beta = abs(C2 * beta[d] - X[i, d])
+                X2 = beta[d] - A2 * D_beta
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A3, C3 = 2 * a * r1 - a, 2 * r2
+                D_delta = abs(C3 * delta[d] - X[i, d])
+                X3 = delta[d] - A3 * D_delta
+
+                X[i, d] = (X1 + X2 + X3) / 3
+
+            # Apply bounds
+            X[i] = np.clip(X[i], lower_bounds, upper_bounds)
+            fitness[i] = obj_func(X[i])
+
+        # Update alpha, beta, delta
+        for i in range(N):
+            if fitness[i] < f_alpha:
+                delta, f_delta = np.copy(beta), f_beta
+                beta, f_beta = np.copy(alpha), f_alpha
+                alpha, f_alpha = np.copy(X[i]), fitness[i]
+            elif fitness[i] < f_beta:
+                delta, f_delta = np.copy(beta), f_beta
+                beta, f_beta = np.copy(X[i]), fitness[i]
+            elif fitness[i] < f_delta:
+                delta, f_delta = np.copy(X[i]), fitness[i]
+
+        # Optional: print progress
+        print(f"Iteration {t+1}/{T_max}, Best Cost: {f_alpha:.2f}")
+
+    return alpha, f_alpha
+
+
+# --- Define variable bounds ---
+# [min, max] for each variable
+bounds = [
+    (0, 400),  # solar panels
+    (0, 20)    # wind turbines
+]
+
+# --- Run GWO for Renewable Energy Optimization ---
+best_solution, best_cost = grey_wolf_optimizer(renewable_energy_cost, bounds, N=25, T_max=100)
+
+print("\n=== Optimal Renewable Energy Configuration ===")
+print(f"Best Solution: Solar Panels = {best_solution[0]:.0f}, Wind Turbines = {best_solution[1]:.0f}")
+print(f"Minimum Total Cost = {best_cost:.2f}")
+
+
+------------------------------------------------RESULT-------------------------------------------------
+Iteration 1/100, Best Cost: 18789.34
+Iteration 2/100, Best Cost: 17047.27
+Iteration 3/100, Best Cost: 16921.25
+Iteration 4/100, Best Cost: 16880.86
+Iteration 5/100, Best Cost: 16880.86
+Iteration 6/100, Best Cost: 16880.86
+Iteration 7/100, Best Cost: 16880.86
+Iteration 8/100, Best Cost: 16880.86
+Iteration 9/100, Best Cost: 16880.86
+Iteration 10/100, Best Cost: 16694.32
+Iteration 11/100, Best Cost: 16694.32
+Iteration 12/100, Best Cost: 16694.32
+Iteration 13/100, Best Cost: 16668.20
+Iteration 14/100, Best Cost: 16668.20
+Iteration 15/100, Best Cost: 16668.20
+Iteration 16/100, Best Cost: 16668.20
+Iteration 17/100, Best Cost: 16668.20
+Iteration 18/100, Best Cost: 16668.20
+Iteration 19/100, Best Cost: 16668.20
+Iteration 20/100, Best Cost: 16668.20
+Iteration 21/100, Best Cost: 16668.20
+Iteration 22/100, Best Cost: 16668.20
+Iteration 23/100, Best Cost: 16668.20
+Iteration 24/100, Best Cost: 16668.20
+Iteration 25/100, Best Cost: 16668.20
+Iteration 26/100, Best Cost: 16668.20
+Iteration 27/100, Best Cost: 16668.20
+Iteration 28/100, Best Cost: 16668.20
+Iteration 29/100, Best Cost: 16668.20
+Iteration 30/100, Best Cost: 16668.20
+Iteration 31/100, Best Cost: 16668.20
+Iteration 32/100, Best Cost: 16668.20
+Iteration 33/100, Best Cost: 16668.20
+Iteration 34/100, Best Cost: 16668.20
+Iteration 35/100, Best Cost: 16668.20
+Iteration 36/100, Best Cost: 16668.20
+Iteration 37/100, Best Cost: 16668.20
+Iteration 38/100, Best Cost: 16668.20
+Iteration 39/100, Best Cost: 16668.20
+Iteration 40/100, Best Cost: 16668.20
+Iteration 41/100, Best Cost: 16668.20
+Iteration 42/100, Best Cost: 16668.20
+Iteration 43/100, Best Cost: 16668.20
+Iteration 44/100, Best Cost: 16668.20
+Iteration 45/100, Best Cost: 16668.20
+Iteration 46/100, Best Cost: 16668.20
+Iteration 47/100, Best Cost: 16668.20
+Iteration 48/100, Best Cost: 16668.20
+Iteration 49/100, Best Cost: 16668.20
+Iteration 50/100, Best Cost: 16668.20
+Iteration 51/100, Best Cost: 16668.20
+Iteration 52/100, Best Cost: 16668.20
+Iteration 53/100, Best Cost: 16668.20
+Iteration 54/100, Best Cost: 16668.20
+Iteration 55/100, Best Cost: 16668.20
+Iteration 56/100, Best Cost: 16668.20
+Iteration 57/100, Best Cost: 16668.20
+Iteration 58/100, Best Cost: 16668.20
+Iteration 59/100, Best Cost: 16668.20
+Iteration 60/100, Best Cost: 16668.20
+Iteration 61/100, Best Cost: 16668.20
+Iteration 62/100, Best Cost: 16668.20
+Iteration 63/100, Best Cost: 16668.20
+Iteration 64/100, Best Cost: 16668.20
+Iteration 65/100, Best Cost: 16668.20
+Iteration 66/100, Best Cost: 16668.20
+Iteration 67/100, Best Cost: 16668.20
+Iteration 68/100, Best Cost: 16668.20
+Iteration 69/100, Best Cost: 16668.20
+Iteration 70/100, Best Cost: 16668.20
+Iteration 71/100, Best Cost: 16668.20
+Iteration 72/100, Best Cost: 16668.20
+Iteration 73/100, Best Cost: 16668.20
+Iteration 74/100, Best Cost: 16667.15
+Iteration 75/100, Best Cost: 16667.15
+Iteration 76/100, Best Cost: 16667.15
+Iteration 77/100, Best Cost: 16667.15
+Iteration 78/100, Best Cost: 16667.15
+Iteration 79/100, Best Cost: 16667.15
+Iteration 80/100, Best Cost: 16667.15
+Iteration 81/100, Best Cost: 16667.15
+Iteration 82/100, Best Cost: 16667.15
+Iteration 83/100, Best Cost: 16667.15
+Iteration 84/100, Best Cost: 16667.15
+Iteration 85/100, Best Cost: 16667.15
+Iteration 86/100, Best Cost: 16667.15
+Iteration 87/100, Best Cost: 16666.67
+Iteration 88/100, Best Cost: 16666.67
+Iteration 89/100, Best Cost: 16666.67
+Iteration 90/100, Best Cost: 16666.67
+Iteration 91/100, Best Cost: 16666.67
+Iteration 92/100, Best Cost: 16666.67
+Iteration 93/100, Best Cost: 16666.67
+Iteration 94/100, Best Cost: 16666.67
+Iteration 95/100, Best Cost: 16666.67
+Iteration 96/100, Best Cost: 16666.67
+Iteration 97/100, Best Cost: 16666.67
+Iteration 98/100, Best Cost: 16666.67
+Iteration 99/100, Best Cost: 16666.67
+Iteration 100/100, Best Cost: 16666.67
+
+=== Optimal Renewable Energy Configuration ===
+Best Solution: Solar Panels = 0, Wind Turbines = 17
+Minimum Total Cost = 16666.67
